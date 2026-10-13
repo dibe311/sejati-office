@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.log
+hf_space_dist/
+.DS_Store
+Thumbs.db

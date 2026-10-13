@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hermes Multi-Agent Telemetry & Observability Engine</title>
+  
+  <!-- Linear Design System Stylesheet -->
+  <link rel="stylesheet" href="/static/css/linear.css?v=3.0">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- GLOBAL TICKER HEADER (40px) -->
+  <header class="linear-header">
+    
+    <!-- Brand & Fleet Status -->
+    <div class="brand-section">
+      <div class="brand-monogram">H</div>
+      <div style="display: flex; align-items: baseline; gap: 6px;">
+        <span class="brand-title">Hermes</span>
+        <span class="brand-tag">OBSERVABILITY</span>
+      </div>
+      <span class="status-pill" style="border-color: rgba(16, 185, 129, 0.25); color: var(--status-emerald); margin-left: 4px;">
+        <span class="status-dot dot-emerald"></span>
+        <span id="metricFleet">12/12 READY</span>
+      </span>
+    </div>
+
+    <!-- Center System Load -->
+    <div class="header-telemetry-compact">
+      <span class="telemetry-chip tabular-nums">
+        <span style="color: var(--text-subtle);">CPU</span> <strong id="metricCpu" style="color: var(--text-primary);">0%</strong>
+      </span>
+      <span style="color: var(--border-strong);">•</span>
+      <span class="telemetry-chip tabular-nums">
+        <span style="color: var(--text-subtle);">RAM</span> <strong id="metricRam" style="color: var(--text-primary);">0%</strong>
+      </span>
+      <span style="color: var(--border-strong);">•</span>
+      <span class="telemetry-chip tabular-nums" style="color: var(--text-muted);">
+        <span id="metricUptime">00:00:00</span>
+      </span>
+    </div>
+
+    <!-- Actions -->
+    <div class="header-actions">
+      <button id="btnOpenBenchmark" class="btn-linear" title="Benchmark Kinerja Armada">
+        <i data-lucide="gauge" style="width: 12px; height: 12px; color: var(--status-sky);"></i>
+        <span>Bench</span>
+      </button>
+
+      <button id="btnOpenSwarm" class="btn-linear" title="Orkestrasi Swarm 4-Tahap">
+        <i data-lucide="git-pull-request" style="width: 12px; height: 12px; color: var(--status-amber);"></i>
+        <span>Swarm</span>
+      </button>
+
+      <button id="btnOpenBlackboard" class="btn-linear" title="Buka Obsidian Live Blackboard">
+        <i data-lucide="file-text" style="width: 12px; height: 12px; color: var(--brand-violet);"></i>
+        <span>Notes</span>
+      </button>
+    </div>
+
+  </header>
+
+  <!-- VIEW SWITCHER BAR (36px) -->
+  <nav class="view-switcher-bar">
+    <div class="view-segmented-control">
+      <button id="viewBtnTrace" class="view-tab-btn active" onclick="switchView('trace')">
+        <i data-lucide="terminal" style="width: 12px; height: 12px;"></i>
+        <span>Bus Event Stream</span>
+        <span id="traceTabCount" class="tab-badge">0</span>
+      </button>
+
+      <button id="viewBtnFleet" class="view-tab-btn" onclick="switchView('fleet')">
+        <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
+        <span>Armada & Telemetri</span>
+      </button>
+
+      <a id="viewBtnOffice" class="view-tab-btn" href="/office" style="text-decoration: none; color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.35); background: rgba(99, 102, 241, 0.12);">
+        <i data-lucide="box" style="width: 12px; height: 12px; color: #818cf8;"></i>
+        <span>🏢 Kantor 3D Sejati Corp</span>
+      </a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button id="btnLayoutMode" class="btn-linear" onclick="toggleLayoutMode()" title="Ganti antara Tampilan Tab atau Split Layar">
+        <i data-lucide="columns" style="width: 12px; height: 12px; color: var(--brand-violet);"></i>
+        <span id="layoutModeText">Split View</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- WORKSPACE CONTAINER -->
+  <main class="linear-workspace mode-tabbed">
+    
+    <!-- LEFT SIDEBAR: FLEET ROSTER & TELEMETRY CHARTS -->
+    <aside class="linear-sidebar" style="display: none;">
+      
+      <!-- Section 1 Header: Fleet Roster -->
+      <div class="sidebar-section-header">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="layers" style="width: 12px; height: 12px; color: var(--brand-violet);"></i>
+          <span>Armada Agen Spesialis (12)</span>
+        </div>
+        <span style="font-size: 9px; color: var(--text-subtle);">Klik baris untuk filter</span>
+      </div>
+
+      <!-- Fleet Matrix Table -->
+      <div class="fleet-matrix-wrap">
+        <table class="linear-table">
+          <thead>
+            <tr>
+              <th style="width: 48px;">ID</th>
+              <th>Spesialis</th>
+              <th style="text-align: center; width: 65px;">Status</th>
+              <th style="text-align: right; width: 45px;">Tugas</th>
+              <th style="text-align: right; width: 65px;">Latensi</th>
+            </tr>
+          </thead>
+          <tbody id="agentMatrixBody">
+            <!-- Dynamic Agent Rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 2 Header: Telemetry Charts -->
+      <div class="sidebar-section-header">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="activity" style="width: 12px; height: 12px; color: var(--status-sky);"></i>
+          <span>Telemetri Kinerja Host</span>
+        </div>
+        <span style="font-size: 9px; color: var(--text-subtle);">1s Rolling Pulse</span>
+      </div>
+
+      <!-- Telemetry Charts -->
+      <div class="telemetry-charts-wrap">
+        
+        <!-- Latency Bar Chart -->
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <span class="chart-title">Latensi Spesialis (ms)</span>
+            <span class="chart-subtitle">Benchmark Rolling</span>
+          </div>
+          <div class="chart-canvas-box">
+            <canvas id="latencyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Host System Resource Chart -->
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <span class="chart-title">Beban CPU & RAM Host</span>
+            <span id="hostResourceLegend" class="chart-subtitle">CPU: - | RAM: -</span>
+          </div>
+          <div class="chart-canvas-box">
+            <canvas id="systemChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- RIGHT VIEWPORT: LIVE INTER-AGENT TRACE & DISPATCH CONSOLE -->
+    <section class="linear-main-view">
+      
+      <!-- Trace Controls & Filter Bar -->
+      <div class="trace-controls-bar">
+        
+        <div class="stream-filter-tabs">
+          <button class="tab-btn tab-active filter-btn" data-filter="all">Semua</button>
+          <button class="tab-btn filter-btn" data-filter="task">Tugas</button>
+          <button class="tab-btn filter-btn" data-filter="chat">Dialog</button>
+          <button class="tab-btn filter-btn" data-filter="swarm">Swarm</button>
+          <button class="tab-btn filter-btn" data-filter="benchmark">Bench</button>
+          <button class="tab-btn filter-btn" data-filter="blackboard">Notes</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          
+          <!-- Search Field -->
+          <div class="search-field-wrap">
+            <i data-lucide="search" class="search-icon" style="width: 11px; height: 11px;"></i>
+            <input id="searchTraceInput" type="text" placeholder="Cari log..." class="search-field">
+          </div>
+
+          <button id="btnToggleAutoScroll" class="btn-linear" title="Nyalakan / Matikan Auto-Scroll">
+            <i data-lucide="chevrons-down" style="width: 11px; height: 11px; color: var(--status-sky);"></i>
+            <span id="autoScrollText">AUTO</span>
+          </button>
+
+          <button id="btnCopyBusLogs" class="btn-linear" title="Salin seluruh log">
+            <i data-lucide="copy" style="width: 11px; height: 11px;"></i>
+          </button>
+
+          <a id="btnExportMarkdown" href="/api/export?format=markdown" download class="btn-linear" title="Unduh log Markdown">
+            <i data-lucide="download" style="width: 11px; height: 11px; color: var(--status-emerald);"></i>
+          </a>
+
+          <button id="btnClearChat" class="btn-linear" title="Bersihkan log">
+            <i data-lucide="trash-2" style="width: 11px; height: 11px;"></i>
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- Live Structured Event Trace Viewport -->
+      <div id="messageStream" class="trace-stream-scroll">
+        <!-- Live Structured Event Cards Stream Here -->
+      </div>
+
+      <!-- COMMAND & DISPATCH CONSOLE BAR -->
+      <div id="dispatchConsoleContainer" class="command-console-wrapper">
+        
+        <!-- Collapsible Console Strip -->
+        <div class="console-strip-header">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="btnToggleConsole" onclick="toggleConsole()" class="console-toggle-trigger" title="Ciutkan / Buka Bilah Konsol Perintah">
+              <i data-lucide="terminal" style="width: 12px; height: 12px; color: var(--brand-violet);"></i>
+              <span id="consoleToggleLabel">ACP COMMAND CONSOLE</span>
+              <i data-lucide="chevron-up" id="consoleToggleIcon" style="width: 11px; height: 11px; transition: transform 0.2s ease;"></i>
+            </button>
+            <span style="color: var(--border-strong);">|</span>
+            <span id="dispatchTargetHint" style="color: var(--text-muted);">Target: @BACKEND</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; color: var(--text-subtle);">
+            <span id="streamItemCount" style="color: var(--text-muted); font-weight: 500;">0 EVENTS</span>
+            <span>•</span>
+            <span style="color: var(--status-emerald); display: flex; align-items: center; gap: 3px;">
+              <span class="status-dot dot-emerald"></span>
+              <span>LIVE</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Interactive Input Area -->
+        <div id="dispatchConsoleBody" class="console-input-row">
+          
+          <select id="dispatchTargetSelect" class="linear-select">
+            <option value="all">📢 ALL — Broadcast ke 11 Spesialis</option>
+            <option value="orchestrator">👑 ORCHESTRATOR — Lead Architect</option>
+            <option value="frontend">🎨 FRONTEND — UI/UX & 3D WebGL</option>
+            <option value="backend" selected>⚙️ BACKEND — Distributed Systems</option>
+            <option value="api">⚡ API — Postman & Public APIs</option>
+            <option value="database">🗄️ DATABASE — RDBMS & Query Optimization</option>
+            <option value="3d">🧊 3D — Blender 5.1 & Unity 6 Assets</option>
+            <option value="gamedev">🎮 GAMEDEV — Unity 6 C# Gameplay</option>
+            <option value="security">🛡️ SECURITY — AppSec & OWASP</option>
+            <option value="migration">🔄 MIGRATION — DB Schema Evolution</option>
+            <option value="integration">🔌 INTEGRATION — DevOps & APIs</option>
+            <option value="reviewer">✅ REVIEWER — Lead QA & Test Verification</option>
+            <option value="researcher">🔬 RESEARCHER — Systems Research</option>
+            <option value="dev">👥 DEV — Backend + Frontend + GameDev + API</option>
+            <option value="api-team">⚡ API-TEAM — API + Backend + Integration</option>
+            <option value="game">🎯 GAME — GameDev + 3D</option>
+            <option value="data">💾 DATA — Database + Migration</option>
+            <option value="qa">🔍 QA — Reviewer + Security</option>
+            <option value="infra">🏗️ INFRA — Backend + DB + Migration + Integration</option>
+            <option value="creative">✨ CREATIVE — Frontend + 3D</option>
+          </select>
+
+          <input 
+            id="dispatchPromptInput" 
+            type="text" 
+            placeholder="Ketik instruksi spesialis..." 
+            class="linear-input"
+          />
+
+          <button id="btnDispatchSend" class="btn-linear btn-linear-primary" style="height: 28px; padding: 0 12px;">
+            <i data-lucide="send" id="btnDispatchIcon" style="width: 11px; height: 11px;"></i>
+            <span id="btnDispatchText">Kirim</span>
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: BENCHMARK RUNNER & LEADERBOARD -->
+  <div id="benchmarkModal" class="linear-modal-backdrop hidden">
+    <div class="linear-modal-box">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="gauge" style="width: 14px; height: 14px; color: var(--status-sky);"></i>
+          <span class="modal-title">Benchmark Kinerja Armada Agen</span>
+        </div>
+        <button id="btnCloseBenchmark" class="modal-close-btn">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div>
+          <label style="display: block; color: var(--text-muted); font-size: 10px; margin-bottom: 4px; text-transform: uppercase;">PROMPT UJI STANDAR:</label>
+          <input 
+            type="text" 
+            id="benchmarkPrompt" 
+            value="Dalam 1 kalimat padat: sebutkan peran spesialisasi kamu dan 1 keahlian teknis terkuatmu."
+            class="linear-input"
+            style="width: 100%;"
+          >
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-secondary);">
+              <input type="radio" name="benchMode" value="concurrent" checked>
+              <span>Concurrent (Paralel)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-secondary);">
+              <input type="radio" name="benchMode" value="sequential">
+              <span>Sequential</span>
+            </label>
+          </div>
+          <button id="btnStartBenchmark" class="btn-linear btn-linear-primary">
+            <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+            <span>Mulai Uji</span>
+          </button>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-default); border-radius: 6px; overflow: hidden;">
+          <div style="padding: 6px 10px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-muted);">
+            <span style="font-weight: 600; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+              <span id="benchmarkSpinner" class="hidden status-dot dot-sky animate-ping"></span>
+              Hasil Leaderboard
+            </span>
+            <span id="benchmarkStatusText">Siap diuji</span>
+          </div>
+          <table class="linear-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Rank</th>
+                <th>Agen</th>
+                <th style="text-align: right;">Latensi</th>
+                <th style="text-align: center; width: 65px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="benchmarkTableBody">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 16px; color: var(--text-subtle);">Klik "Mulai Uji" untuk mengukur latensi armada.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SWARM PIPELINE RUNNER -->
+  <div id="swarmModal" class="linear-modal-backdrop hidden">
+    <div class="linear-modal-box">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="git-pull-request" style="width: 14px; height: 14px; color: var(--status-amber);"></i>
+          <div>
+            <span class="modal-title">Multi-Agent Swarm Pipeline</span>
+            <div style="font-size: 9px; color: var(--text-subtle);">Alur Kerja Kolaboratif Lintas Divisi Otonom</div>
+          </div>
+        </div>
+        <button id="btnCloseSwarm" class="modal-close-btn">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div>
+          <label style="display: block; color: var(--text-muted); font-size: 10px; margin-bottom: 4px; text-transform: uppercase;">GOAL FITUR / ARSITEKTUR SWARM:</label>
+          <input 
+            type="text" 
+            id="swarmGoalInput" 
+            value="Bangun pipeline ingest telemetry IoT sensor aquaponics (pH, TDS, Flow) dengan validasi Pydantic"
+            class="linear-input"
+            style="width: 100%;"
+          >
+        </div>
+
+        <div>
+          <span style="font-size: 10px; color: var(--text-subtle); display: block; margin-bottom: 6px;">PRESET PIPELINE CEPAT:</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="swarmPresetContainer">
+            <button type="button" class="btn-linear swarm-preset-btn">IoT Telemetry Ingest</button>
+            <button type="button" class="btn-linear swarm-preset-btn">Hardened JWT Auth</button>
+            <button type="button" class="btn-linear swarm-preset-btn">Database Partitioning Schema</button>
+            <button type="button" class="btn-linear swarm-preset-btn">Unity 3D PBR Asset Pipeline</button>
+            <button type="button" class="btn-linear swarm-preset-btn">Postman Mock & OpenAPI Contract</button>
+          </div>
+        </div>
+
+        <!-- 4-Stage Stepper -->
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-default); border-radius: 6px; padding: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+            <span style="font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+              <span id="swarmSpinner" class="hidden status-dot dot-amber animate-ping"></span>
+              Alur Pipeline
+            </span>
+            <span id="swarmStageStatus" style="color: var(--status-amber); font-weight: 600;">Siap Diluncurkan</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center;">
+            <div id="stepOrchestrator" class="chart-panel" style="min-height: auto; padding: 6px;">
+              <span style="color: var(--status-sky); font-weight: 700; font-size: 10px; display: block;">1. ARCH</span>
+              <span style="font-size: 9px; color: var(--text-muted);">Orchestrator</span>
+            </div>
+            <div id="stepBackend" class="chart-panel" style="min-height: auto; padding: 6px;">
+              <span style="color: #3b82f6; font-weight: 700; font-size: 10px; display: block;">2. CODE</span>
+              <span style="font-size: 9px; color: var(--text-muted);">Backend</span>
+            </div>
+            <div id="stepSecurity" class="chart-panel" style="min-height: auto; padding: 6px;">
+              <span style="color: var(--status-rose); font-weight: 700; font-size: 10px; display: block;">3. AUDIT</span>
+              <span style="font-size: 9px; color: var(--text-muted);">Security</span>
+            </div>
+            <div id="stepReviewer" class="chart-panel" style="min-height: auto; padding: 6px;">
+              <span style="color: var(--status-emerald); font-weight: 700; font-size: 10px; display: block;">4. TEST</span>
+              <span style="font-size: 9px; color: var(--text-muted);">Reviewer</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+          <button id="btnStartSwarm" class="btn-linear btn-linear-primary" style="background: var(--status-amber); color: #000000; font-weight: 700;">
+            <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+            <span>Luncurkan Swarm</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: OBSIDIAN BLACKBOARD VIEWER -->
+  <div id="blackboardModal" class="linear-modal-backdrop hidden">
+    <div class="linear-modal-box" style="max-width: 800px; max-height: 85vh;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--brand-violet);"></i>
+          <div>
+            <span class="modal-title">Obsidian Live Blackboard</span>
+            <div id="blackboardPathText" style="font-size: 9px; color: var(--text-subtle);">D:\agent\agent brain\07 - Multi-Agent System\Multi-Agent Live Blackboard.md</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button id="btnSyncBlackboardModal" class="btn-linear" style="color: var(--status-amber);">
+            <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+            <span>Sync</span>
+          </button>
+          <button id="btnCloseBlackboard" class="modal-close-btn">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div style="flex: 1; overflow-y: auto; padding: 14px; background: #050607; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; user-select: text;" id="blackboardContentArea">
+        Memuat konten blackboard dari Obsidian vault...
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer"></div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
+  <script src="/static/js/app.js?v=3.0"></script>
+</body>
+</html>
